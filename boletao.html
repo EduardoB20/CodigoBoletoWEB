@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Extrair Boleto do PDF</title>
+
+    <!-- Carrega a biblioteca PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.min.js"></script>
+    <style>
+        body{
+            background-color:#4180AB    ;
+        }
+        h2{
+            font-family: monocraft;
+            color: black;
+            margin-bottom: 40px;
+
+        }
+        /*https://paletadecores.com/paleta/4180ab/ffffff/8ab3cf/bdd1de/e4ebf0/*/
+        div{
+            background-color: #bdd1de;
+            margin-left: 400px;
+            margin-top: 200px;
+            width: 500px;
+            padding: 100px;
+                    border: 1px solid;
+            border-radius: 10px;
+        }
+        button{
+            background-color: #4180AB;
+            text-decoration: none;
+            padding: 10px;
+            border: 1px solid;
+            border-radius: 10px;
+            transition: background-color 0.5s ease;
+        }
+        button:hover{
+                        background-color: #fff;
+            text-decoration: none;
+            padding: 10px;
+            border: 1px solid;
+            border-radius: 10px;
+            transition: background-color 0.5s ease;
+            cursor: pointer;
+        }
+        .pdf{
+                        background-color: #4180AB;
+            text-decoration: none;
+            padding: 8px;
+            border: 1px solid;
+            border-radius: 10px;
+            transition: background-color 0.5s ease;
+        }
+        h3{
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid;
+            color: black;
+        }
+        h4{
+
+            color: black;
+            font-size: 20px;
+        }
+    </style>
+</head>
+
+<body>
+<div>
+    
+    <h2>Extrair número de boleto do PDF</h2>
+
+    <input type="file" id="pdfFile" accept="application/pdf" class="pdf">
+    <button onclick="processarPDF()">Processar</button>
+    <h4 id="Resultado_Indice"></h4>
+    <h3 id="resultado">O número do boleto ira aparecer aqui!</h3>
+</div>
+<script>
+
+async function lerTextoPDF(file) {
+    const arrayBuffer = await file.arrayBuffer();
+
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    let textoFinal = "";
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const pagina = await pdf.getPage(i);
+        const texto = await pagina.getTextContent();
+
+        const linhas = texto.items.map(item => item.str).join(" ");
+        textoFinal += linhas + "\n";
+    }
+
+    return textoFinal;
+}
+
+        const resultadoDiv = document.getElementById('resultado');
+        if (resultadoDiv) {
+            resultadoDiv.addEventListener('click', () => {
+                const texto = resultadoDiv.textContent || resultadoDiv.innerText;
+                navigator.clipboard.writeText(texto.trim()).then(() => {
+                    alert('Número de Boleto copiado para a área de transferência!');
+                }).catch(err => {
+                    console.error('Erro ao copiar: ', err);
+                });
+            });
+        }
+
+function extrairPrimeiroBoleto(texto) {
+    texto = texto.replace(/[\s\n\r\t]+/g, " ");
+
+    const regex5 = /(\d{5}[.\s]?\d{5}\s\d{5}[.\s]?\d{6}\s\d{5}[.\s]?\d{6}\s\d{1}\s\d{14})/;
+    const regex4 = /(\d{5}[.\s]?\d{5}\s\d{5}[.\s]?\d{6}\s\d{5}[.\s]?\d{7}\s\d{14})/;
+
+    const combined = new RegExp(`${regex5.source}|${regex4.source}`);
+
+    const match = texto.match(combined);
+
+    if (match) {
+        const bloco = match[0];
+        const apenasDigitos = bloco.replace(/\D/g, "");
+
+        if (apenasDigitos.length >= 47 && apenasDigitos.length <= 48) {
+            return apenasDigitos;
+        }
+    }
+
+    return null;
+}
+
+async function processarPDF() {
+    const input = document.getElementById("pdfFile");
+    
+    if (!input.files.length) {
+        alert("Selecione um PDF!");
+        return;
+    }
+
+    const file = input.files[0];
+    
+    try {
+        const texto = await lerTextoPDF(file);
+        const boleto = extrairPrimeiroBoleto(texto);
+
+        if (boleto) {
+            document.getElementById("Resultado_Indice").innerText =
+                "✅ Boleto encontrado(Clique no quadrado branco para copiar!)";
+            document.getElementById("resultado").innerText =
+                boleto;
+
+        } else {
+            document.getElementById("resultado").innerText =
+                "❌ Nenhum boleto válido encontrado.";
+        }
+
+    } catch (e) {
+        document.getElementById("resultado").innerText =
+            "❌ Erro ao processar PDF: " + e;
+    }
+}
+
+</script>
+
+</body>
+</html>
