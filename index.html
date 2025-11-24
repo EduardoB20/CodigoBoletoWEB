@@ -3,32 +3,42 @@
 <head>
     <meta charset="utf-8">
     <title>Extrair Boleto de PDF ou Imagem</title> 
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.min.js"></script>
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.worker.min.js";
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
     <style>
         body{
             background-color:#4180AB;
         }
         h2{
-  font-family: "Poppins", sans-serif;
-  font-weight: 500;
-  font-style: normal;
-
+            font-family: "Poppins", sans-serif;
+            font-weight: 500;
+            font-style: normal;
         }
-
 
         .Caixa_img, .Itau_img, .C6_img, .Santander_img, .Bradesco_img{
             width: 30px;
             height: 30px;
+            margin-right: 8px;
+            margin-bottom: 15px;
         }
-        /*https://paletadecores.com/paleta/4180ab/ffffff/8ab3cf/bdd1de/e4ebf0/*/
+
         .content{
             background-color: #bdd1de;
-            margin-left: 400px;
-            margin-top: 130px;
-            width: 500px;
+            margin: 130px auto 0;
+            max-width: 500px; 
+            width: 90%;
             padding: 70px;
-                         border: 1px solid;
+            border: 1px solid;
             border-radius: 10px;
         }
         button{
@@ -40,7 +50,7 @@
             transition: background-color 0.5s ease;
         }
         button:hover{
-                         background-color: #fff;
+            background-color: #fff;
             text-decoration: none;
             padding: 10px;
             border: 1px solid;
@@ -49,29 +59,59 @@
             cursor: pointer;
         }
         .pdf{
-                         background-color: #4180AB;
+            background-color: #4180AB;
             text-decoration: none;
             padding: 8px;
             border: 1px solid;
             border-radius: 10px;
             transition: background-color 0.5s ease;
         }
+        /* Estilo H3 modificado para separar os blocos */
         h3{
-              font-family: "Poppins", sans-serif;
-  font-weight: 200;
-  font-style: normal;
+            font-family: "Poppins", sans-serif;
+            font-weight: 200;
+            font-style: normal;
             background-color: #fff;
             padding: 20px;
             border: 1px solid;
             color: black;
             font-size: 18px;
+            cursor: pointer;
+            user-select: all;
+            margin-top: 10px; /* Adiciona espaçamento entre o código e o bloco de info */
         }
         h4{
+            font-family: "Poppins", sans-serif;
+            font-weight: 200;
+            font-style: normal;
+        }
+        
+        @media (max-width: 600px) {
+            .content {
+                margin-top: 70px; 
+                width: 90%; 
+                padding: 20px; 
+            }
 
-  font-family: "Poppins", sans-serif;
-  font-weight: 200;
-  font-style: normal;
-  
+            .pdf, button {
+                display: block; 
+                width: 100%;
+                margin-top: 10px;
+                box-sizing: border-box; 
+            }
+                    h3{
+            font-family: "Poppins", sans-serif;
+            font-weight: 200;
+            font-style: normal;
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid;
+            color: black;
+            font-size: 12px;
+            cursor: pointer;
+            user-select: all;
+            margin-top: 10px; /* Adiciona espaçamento entre o código e o bloco de info */
+        }
         }
     </style>
 </head>
@@ -79,59 +119,124 @@
 <body>
 <div class="content">
 
-        <img src="Itau.png" alt="" class="Itau_img">
-        <img src="Caixa.png" alt="" class="Caixa_img">
-        <img src="Santander.png" alt="" class="Santander_img">
-        <img src="bradesco.jpg" alt="" class="Bradesco_img">
-        <img src="C6imagem.png" alt="" class="C6_img">
+    <img src="Itau.png" alt="" class="Itau_img">
+    <img src="Caixa.png" alt="" class="Caixa_img">
+    <img src="Santander.png" alt="" class="Santander_img">
+    <img src="bradesco.jpg" alt="" class="Bradesco_img">
+    <img src="C6imagem.png" alt="" class="C6_img">
 
-        
     <h2>Extrair número de boleto</h2>
 
     <input type="file" id="arquivoInput" accept="application/pdf, image/*" class="pdf">
     <button onclick="processarArquivo()">Processar</button>
+
     <h4 id="Resultado_Indice"></h4>
-    <h3 id="resultado">O número do boleto ira aparecer aqui!</h3>
+    <h3 id="resultado">O número do boleto irá aparecer aqui!</h3>
+    <button onclick="mostrarMais()">Ver mais informações</button>
+    
 </div>
 
 <script>
+let textoExtraidoGlobal = null;
+let nomeDoBancoGlobal = null;
+let valorBoletoGlobal = null;
+
+function extrairNomeBanco(texto) {
+    const bancos = {
+        "ITAU": ["ITAU", "ITAÚ", "UNIBANCO"],
+        "BRADESCO": ["BRADESCO", "BRAD."],
+        "CAIXA": ["CAIXA ECONOMICA", "CAIXA"],
+        "SANTANDER": ["SANTANDER"],
+        "C6": ["C6", "C6 BANK", "C6BANK"],
+    };
+
+    const textoMaiusculo = texto.toUpperCase();
+
+    for (const nomeBanco in bancos) {
+        for (const variacao of bancos[nomeBanco]) {
+            if (textoMaiusculo.includes(variacao)) {
+                return nomeBanco;
+            }
+        }
+    }
+
+    return null;
+}
+
+function extrairValorBoleto(texto) {
+    const regexValor = /(\d{1,3}(?:\.\d{3})*,\d{2})|(\d{1,3},\d{2})/g;
+    
+    const textoMaiusculo = texto.toUpperCase();
+    
+    const indiceValor = textoMaiusculo.indexOf('VALOR');
+    const indiceTotal = textoMaiusculo.indexOf('TOTAL');
+    
+    let textoBusca = textoMaiusculo;
+
+    if (indiceValor !== -1 || indiceTotal !== -1) {
+        const startIndex = Math.max(indiceValor, indiceTotal);
+        textoBusca = textoMaiusculo.substring(startIndex, startIndex + 100);
+    }
+    
+    const matches = [...textoBusca.matchAll(regexValor)];
+
+    if (matches.length > 0) {
+        return matches[matches.length - 1][0];
+    }
+    
+    const boletoApenasDigitos = extrairPrimeiroBoleto(texto);
+    if (boletoApenasDigitos && boletoApenasDigitos.length >= 47) {
+        const valorCodificado = boletoApenasDigitos.substring(37, 47);
+        
+        const valorSemZeros = valorCodificado.replace(/^0+/, ''); 
+        
+        if (valorSemZeros.length > 2) {
+            const inteiro = valorSemZeros.substring(0, valorSemZeros.length - 2);
+            const centavos = valorSemZeros.substring(valorSemZeros.length - 2);
+            
+            const valorNumerico = parseFloat(inteiro || '0') + (parseFloat(centavos) / 100);
+            
+            return valorNumerico.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+    }
+
+    return null;
+}
 
 async function lerTextoDePDFOuImagemInterna(file) {
     document.getElementById("Resultado_Indice").innerText = "";
     const arrayBuffer = await file.arrayBuffer();
+
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
     let textoFinal = "";
     
-    const worker = await Tesseract.createWorker('por'); 
+    const worker = await Tesseract.createWorker('por');
     
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
 
     try {
         for (let i = 1; i <= pdf.numPages; i++) {
-            
             const pagina = await pdf.getPage(i);
-            const viewport = pagina.getViewport({ scale: 2.0 }); 
-            
+            const viewport = pagina.getViewport({ scale: 2.0 });
+
             canvas.height = viewport.height;
             canvas.width = viewport.width;
 
-            
             await pagina.render({
                 canvasContext: context,
                 viewport: viewport,
             }).promise;
-            
-            
+
             const dataUrl = canvas.toDataURL('image/png');
 
-            
             const { data: { text } } = await worker.recognize(dataUrl);
             textoFinal += text + "\n\n";
         }
     } finally {
         await worker.terminate();
-        canvas.remove(); 
+        canvas.remove();
     }
 
     return textoFinal;
@@ -154,9 +259,9 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function calmaae(){
+async function calmaae() {
     const resultadoDiv = document.getElementById("resultado");
-    for(let i = 0; i <= 100; i+=1){
+    for (let i = 0; i <= 100; i++) {
         resultadoDiv.innerText = `Processando (${i}%)`;
         await sleep(5);
     }
@@ -170,7 +275,6 @@ function extrairPrimeiroBoleto(texto) {
     const regex4 = /(\d{5}[.\s]?\d{5}\s\d{5}[.\s]?\d{6}\s\d{5}[.\s]?\d{7}\s\d{14})/;
 
     const combined = new RegExp(`${regex5.source}|${regex4.source}`);
-
     const match = texto.match(combined);
 
     if (match) {
@@ -200,71 +304,138 @@ async function processarArquivo() {
     let textoExtraido = null;
 
     resultadoIndice.innerText = "Preparando...";
-    resultadoDiv.innerText = "Processando (0%)"; 
+    resultadoDiv.innerText = "Processando (0%)";
 
-    
-    const feedbackPromise = calmaae(); 
+    const feedbackPromise = calmaae();
 
     try {
-        
         if (fileType === "application/pdf") {
-            
-            textoExtraido = await lerTextoDePDFOuImagemInterna(file); 
+            textoExtraido = await lerTextoDePDFOuImagemInterna(file);
         } else if (fileType.startsWith("image/")) {
             textoExtraido = await lerTextoImagem(file);
         } else {
-            alert("Tipo de arquivo não suportado. Selecione PDF ou Imagem.");
+            alert("Tipo de arquivo não suportado.");
             resultadoIndice.innerText = "";
-            resultadoDiv.innerText = "O número do boleto ira aparecer aqui!";
+            resultadoDiv.innerText = "O número do boleto irá aparecer aqui!";
             return;
         }
 
-        
         await feedbackPromise;
-
         
-        if (textoExtraido) {
-            const boleto = extrairPrimeiroBoleto(textoExtraido);
+        textoExtraidoGlobal = textoExtraido; 
 
-            if (boleto) {
-                resultadoIndice.innerText =
-                    "✅ Boleto encontrado (Clique no quadrado branco para copiar!)";
-                resultadoDiv.innerText = boleto;
-            } else {
-                resultadoIndice.innerText = "❌ Boleto não encontrado.";
-                resultadoDiv.innerText =
-                    "Nenhum boleto válido encontrado.";
-            }
-        } else {
-             resultadoIndice.innerText = "❌ Falha na leitura.";
-             resultadoDiv.innerText = "Não foi possível extrair texto do arquivo.";
+        // Limpeza de informações antigas (contêiner)
+        const infoExistente = document.getElementById('infoExtra');
+        if (infoExistente) {
+            infoExistente.remove();
+        }
+        const botaoMostrarMais = document.querySelector('button[onclick="mostrarMais()"]');
+        if (botaoMostrarMais) {
+            botaoMostrarMais.innerText = 'Ver mais informações';
         }
         
+        if (textoExtraidoGlobal) {
+            
+            nomeDoBancoGlobal = extrairNomeBanco(textoExtraidoGlobal);
+            valorBoletoGlobal = extrairValorBoleto(textoExtraidoGlobal); 
+            const boleto = extrairPrimeiroBoleto(textoExtraidoGlobal);
+            
+            let indiceTexto = "";
+
+            if (boleto) {
+                
+                indiceTexto = "✅ Boleto encontrado (clique para copiar!)";
+                
+                resultadoIndice.innerHTML = indiceTexto;
+                resultadoDiv.innerText = boleto;
+                
+            } else {
+                
+                resultadoIndice.innerText = `❌ Boleto não encontrado.`;
+                if (nomeDoBancoGlobal) {
+                   resultadoIndice.innerText += ` Mas encontramos o Banco: ${nomeDoBancoGlobal}.`;
+                }
+                resultadoDiv.innerText = "Nenhum boleto válido encontrado.";
+            }
+
+        } else {
+            resultadoIndice.innerText = "❌ Falha na leitura.";
+            resultadoDiv.innerText = "Não foi possível extrair texto.";
+        }
 
     } catch (e) {
         resultadoIndice.innerText = "❌ Erro";
-        resultadoDiv.innerText =
-            "❌ Erro ao processar o arquivo: " + (e.message || e);
+        resultadoDiv.innerText = "Erro ao processar: " + (e.message || e);
         console.error("Erro completo:", e);
     }
 }
 
+async function mostrarMais() {
+    const contentDiv = document.querySelector('.content');
+    const resultadoDiv = document.getElementById("resultado");
+    const infoExistente = document.getElementById('infoExtra'); 
 
-const resultadoDiv = document.getElementById('resultado');
-if (resultadoDiv) {
-    resultadoDiv.addEventListener('click', () => {
-        const texto = resultadoDiv.textContent || resultadoDiv.innerText;
-        if (texto.trim() !== "O número do boleto ira aparecer aqui!" && texto.trim().startsWith("❌") === false && texto.trim().startsWith("Processando") === false){
-            navigator.clipboard.writeText(texto.trim()).then(() => {
-                alert('Número de Boleto copiado para a área de transferência!');
-            }).catch(err => {
-                console.error('Erro ao copiar: ', err);
+    if (!nomeDoBancoGlobal && !valorBoletoGlobal) {
+        alert("Nenhum arquivo processado ou informações não identificadas.");
+        return;
+    }
+    
+    // 1. Lógica de Ocultar/Exibir (no contêiner)
+    if (infoExistente) {
+        infoExistente.style.display = (infoExistente.style.display === 'none' || infoExistente.style.display === '') ? 'block' : 'none';
+        
+        const botao = document.querySelector('button[onclick="mostrarMais()"]');
+        botao.innerText = (infoExistente.style.display === 'none') ? 'Ver mais informações' : 'Ocultar informações';
+        
+        return; 
+    }
+
+    // 2. Cria o contêiner principal
+    const infoContainer = document.createElement('div');
+    infoContainer.setAttribute('id', 'infoExtra');
+
+    // 3. Cria o <h3> para o Banco
+    const h3Banco = document.createElement('h3');
+    h3Banco.style.cursor = 'default';
+    if (nomeDoBancoGlobal) {
+        h3Banco.innerText = `Banco: ${nomeDoBancoGlobal}`;
+    } else {
+        h3Banco.innerText = `Banco: Não identificado`;
+    }
+    
+    // 4. Cria o <h3> para o Valor
+    const h3Valor = document.createElement('h3');
+    h3Valor.style.cursor = 'default';
+    if (valorBoletoGlobal) {
+        h3Valor.innerText = `Valor: R$ ${valorBoletoGlobal}`;
+    } else {
+        h3Valor.innerText = `Valor: Não encontrado`;
+    }
+
+    // 5. Adiciona os dois <h3> ao contêiner
+    infoContainer.appendChild(h3Banco);
+    infoContainer.appendChild(h3Valor);
+
+    // 6. Insere o contêiner DEPOIS do resultadoDiv (código do boleto)
+    contentDiv.insertBefore(infoContainer, resultadoDiv.nextSibling);
+    
+    const botao = document.querySelector('button[onclick="mostrarMais()"]');
+    botao.innerText = 'Ocultar informações';
+}
+
+const resultadoDivClick = document.getElementById('resultado');
+if (resultadoDivClick) {
+    resultadoDivClick.addEventListener('click', () => {
+        const texto = resultadoDivClick.textContent.trim();
+        if (texto && !texto.startsWith("❌") && !texto.startsWith("Processando") && !texto.includes("irá aparecer aqui")) {
+            navigator.clipboard.writeText(texto).then(() => {
+                alert('Número copiado!');
             });
         }
     });
 }
+
 </script>
 
 </body>
 </html>
-
