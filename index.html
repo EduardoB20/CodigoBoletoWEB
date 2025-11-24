@@ -15,13 +15,19 @@
             margin-bottom: 40px;
 
         }
+
+
+        .Caixa_img, .Itau_img, .C6_img, .Santander_img, .Bradesco_img{
+            width: 30px;
+            height: 30px;
+        }
         /*https://paletadecores.com/paleta/4180ab/ffffff/8ab3cf/bdd1de/e4ebf0/*/
-        div{
+        .content{
             background-color: #bdd1de;
             margin-left: 400px;
             margin-top: 130px;
             width: 500px;
-            padding: 100px;
+            padding: 70px;
                          border: 1px solid;
             border-radius: 10px;
         }
@@ -65,8 +71,15 @@
 </head>
 
 <body>
-<div>
-    
+<div class="content">
+    <div class="Bancos_Img">
+        <img src="Itau.png" alt="" class="Itau_img">
+        <img src="Caixa.png" alt="" class="Caixa_img">
+        <img src="Santander.png" alt="" class="Santander_img">
+        <img src="bradesco.jpg" alt="" class="Bradesco_img">
+        <img src="C6imagem.png" alt="" class="C6_img">
+    </div>
+        
     <h2>Extrair número de boleto de PDF ou Imagem</h2>
 
     <input type="file" id="arquivoInput" accept="application/pdf, image/*" class="pdf">
@@ -141,6 +154,7 @@ async function calmaae(){
         resultadoDiv.innerText = `Processando (${i}%)`;
         await sleep(5);
     }
+    await sleep(100);
 }
 
 function extrairPrimeiroBoleto(texto) {
@@ -246,8 +260,4 @@ if (resultadoDiv) {
 </script>
 
 </body>
-
 </html>
-
-
-
