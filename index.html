@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Extrair Boleto de PDF ou Imagem</title> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.10.111/pdf.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    <style>
+        body{
+            background-color:#4180AB;
+        }
+        h2{
+            font-family: monocraft;
+            color: black;
+            margin-bottom: 40px;
+
+        }
+        /*https://paletadecores.com/paleta/4180ab/ffffff/8ab3cf/bdd1de/e4ebf0/*/
+        div{
+            background-color: #bdd1de;
+            margin-left: 400px;
+            margin-top: 130px;
+            width: 500px;
+            padding: 100px;
+                         border: 1px solid;
+            border-radius: 10px;
+        }
+        button{
+            background-color: #4180AB;
+            text-decoration: none;
+            padding: 10px;
+            border: 1px solid;
+            border-radius: 10px;
+            transition: background-color 0.5s ease;
+        }
+        button:hover{
+                         background-color: #fff;
+            text-decoration: none;
+            padding: 10px;
+            border: 1px solid;
+            border-radius: 10px;
+            transition: background-color 0.5s ease;
+            cursor: pointer;
+        }
+        .pdf{
+                         background-color: #4180AB;
+            text-decoration: none;
+            padding: 8px;
+            border: 1px solid;
+            border-radius: 10px;
+            transition: background-color 0.5s ease;
+        }
+        h3{
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid;
+            color: black;
+        }
+        h4{
+
+            color: black;
+            font-size: 20px;
+        }
+    </style>
+</head>
+
+<body>
+<div>
+    
+    <h2>Extrair número de boleto de PDF ou Imagem</h2>
+
+    <input type="file" id="arquivoInput" accept="application/pdf, image/*" class="pdf">
+    <button onclick="processarArquivo()">Processar</button>
+    <h4 id="Resultado_Indice"></h4>
+    <h3 id="resultado">O número do boleto ira aparecer aqui!</h3>
+</div>
+
+<script>
+
+async function lerTextoDePDFOuImagemInterna(file) {
+    document.getElementById("Resultado_Indice").innerText = "";
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let textoFinal = "";
+    
+    const worker = await Tesseract.createWorker('por'); 
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    try {
+        for (let i = 1; i <= pdf.numPages; i++) {
+            
+            const pagina = await pdf.getPage(i);
+            const viewport = pagina.getViewport({ scale: 2.0 }); 
+            
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            
+            await pagina.render({
+                canvasContext: context,
+                viewport: viewport,
+            }).promise;
+            
+            
+            const dataUrl = canvas.toDataURL('image/png');
+
+            
+            const { data: { text } } = await worker.recognize(dataUrl);
+            textoFinal += text + "\n\n";
+        }
+    } finally {
+        await worker.terminate();
+        canvas.remove(); 
+    }
+
+    return textoFinal;
+}
+
+async function lerTextoImagem(file) {
+    document.getElementById("Resultado_Indice").innerText = "Processando OCR (pode demorar)...";
+    
+    const worker = await Tesseract.createWorker('por'); 
+    
+    try {
+        const { data: { text } } = await worker.recognize(file);
+        return text;
+    } finally {
+        await worker.terminate();
+    }
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function calmaae(){
+    const resultadoDiv = document.getElementById("resultado");
+    for(let i = 0; i <= 100; i+=1){
+        resultadoDiv.innerText = `Processando (${i}%)`;
+        await sleep(15);
+    }
+    await sleep(500);
+}
+
+function extrairPrimeiroBoleto(texto) {
+    texto = texto.replace(/[\s\n\r\t]+/g, " ");
+
+    const regex5 = /(\d{5}[.\s]?\d{5}\s\d{5}[.\s]?\d{6}\s\d{5}[.\s]?\d{6}\s\d{1}\s\d{14})/;
+    const regex4 = /(\d{5}[.\s]?\d{5}\s\d{5}[.\s]?\d{6}\s\d{5}[.\s]?\d{7}\s\d{14})/;
+
+    const combined = new RegExp(`${regex5.source}|${regex4.source}`);
+
+    const match = texto.match(combined);
+
+    if (match) {
+        const bloco = match[0];
+        const apenasDigitos = bloco.replace(/\D/g, "");
+
+        if (apenasDigitos.length >= 47 && apenasDigitos.length <= 48) {
+            return apenasDigitos;
+        }
+    }
+
+    return null;
+}
+
+async function processarArquivo() {
+    const input = document.getElementById("arquivoInput");
+    const resultadoIndice = document.getElementById("Resultado_Indice");
+    const resultadoDiv = document.getElementById("resultado");
+    
+    if (!input.files.length) {
+        alert("Selecione um arquivo (PDF ou Imagem)!");
+        return;
+    }
+
+    const file = input.files[0];
+    const fileType = file.type;
+    let textoExtraido = null;
+
+    resultadoIndice.innerText = "Preparando...";
+    resultadoDiv.innerText = "Processando (0%)"; 
+
+    
+    const feedbackPromise = calmaae(); 
+
+    try {
+        
+        if (fileType === "application/pdf") {
+            
+            textoExtraido = await lerTextoDePDFOuImagemInterna(file); 
+        } else if (fileType.startsWith("image/")) {
+            textoExtraido = await lerTextoImagem(file);
+        } else {
+            alert("Tipo de arquivo não suportado. Selecione PDF ou Imagem.");
+            resultadoIndice.innerText = "";
+            resultadoDiv.innerText = "O número do boleto ira aparecer aqui!";
+            return;
+        }
+
+        
+        await feedbackPromise;
+
+        
+        if (textoExtraido) {
+            const boleto = extrairPrimeiroBoleto(textoExtraido);
+
+            if (boleto) {
+                resultadoIndice.innerText =
+                    "✅ Boleto encontrado (Clique no quadrado branco para copiar!)";
+                resultadoDiv.innerText = boleto;
+            } else {
+                resultadoIndice.innerText = "❌ Boleto não encontrado.";
+                resultadoDiv.innerText =
+                    "Nenhum boleto válido encontrado. Tente um arquivo com melhor qualidade.";
+            }
+        } else {
+             resultadoIndice.innerText = "❌ Falha na leitura.";
+             resultadoDiv.innerText = "Não foi possível extrair texto do arquivo.";
+        }
+        
+
+    } catch (e) {
+        resultadoIndice.innerText = "❌ Erro";
+        resultadoDiv.innerText =
+            "❌ Erro ao processar o arquivo: " + (e.message || e);
+        console.error("Erro completo:", e);
+    }
+}
+
+
+const resultadoDiv = document.getElementById('resultado');
+if (resultadoDiv) {
+    resultadoDiv.addEventListener('click', () => {
+        const texto = resultadoDiv.textContent || resultadoDiv.innerText;
+        if (texto.trim() !== "O número do boleto ira aparecer aqui!" && texto.trim().startsWith("❌") === false && texto.trim().startsWith("Processando") === false){
+            navigator.clipboard.writeText(texto.trim()).then(() => {
+                alert('Número de Boleto copiado para a área de transferência!');
+            }).catch(err => {
+                console.error('Erro ao copiar: ', err);
+            });
+        }
+    });
+}
+</script>
+
+</body>
+</html>
